@@ -37,6 +37,11 @@ ASTNode *parse_function(ParserContext *ctx, Lexer *l, int is_async)
     Token name_tok = lexer_next(l);
     char *name = token_strdup(name_tok);
 
+    if (is_async)
+    {
+        ctx->has_async = 1;
+    }
+
     // Check for C reserved word conflict
     if (is_c_reserved_word(name))
     {
@@ -3876,7 +3881,7 @@ char *run_comptime_block(ParserContext *ctx, Lexer *l)
         zpanic("Could not create temp file %s", filename);
     }
 
-    emit_preamble(f);
+    emit_preamble(ctx, f);
     fprintf(
         f,
         "size_t _z_check_bounds(size_t index, size_t size) { if (index >= size) { fprintf(stderr, "
