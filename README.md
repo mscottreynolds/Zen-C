@@ -74,19 +74,6 @@ const PI = 3.14159;         // Compile-time constant
 var explicit: float = 1.0;  // Explicit type
 ```
 
-#### Mutability
-By default, variables are mutable. You can enable **Immutable by Default** mode using a directive.
-
-```zc
-//> immutable-by-default
-
-var x = 10;
-// x = 20; // Error: x is immutable
-
-var mut y = 10;
-y = 20;    // OK
-```
-
 ### 2. Primitive Types
 
 | Type | C Equivalent | Description |
@@ -524,7 +511,6 @@ Zen C supports special comments at the top of your source file to configure the 
 | `//> pkg-config:` | `gtk+-3.0` | Run `pkg-config` and append `--cflags` and `--libs`. |
 | `//> shell:` | `command` | Execute a shell command during the build. |
 | `//> get:` | `http://url/file` | Download a file if specific file does not exist. |
-| `//> immutable-by-default` | None | Make variables immutable unless declared `mut`. |
 
 #### Examples
 

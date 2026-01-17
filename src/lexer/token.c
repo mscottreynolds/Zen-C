@@ -173,10 +173,6 @@ Token lexer_next(Lexer *l)
         {
             return (Token){TOK_VOLATILE, s, 8, start_line, start_col};
         }
-        if (len == 3 && strncmp(s, "mut", 3) == 0)
-        {
-            return (Token){TOK_MUT, s, 3, start_line, start_col};
-        }
         if (len == 5 && strncmp(s, "async", 5) == 0)
         {
             return (Token){TOK_ASYNC, s, 5, start_line, start_col};

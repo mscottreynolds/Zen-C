@@ -37,7 +37,6 @@ typedef struct Symbol
     char *name;
     char *type_name;
     Type *type_info;
-    int is_mutable;
     int is_used;
     int is_autofree;
     Token decl_token;
@@ -102,13 +101,6 @@ typedef struct ImportedFile
     char *path;
     struct ImportedFile *next;
 } ImportedFile;
-
-typedef struct VarMutability
-{
-    char *name;
-    int is_mutable;
-    struct VarMutability *next;
-} VarMutability;
 
 // Instantiation tracking
 typedef struct Instantiation
@@ -250,11 +242,9 @@ struct ParserContext
     ImportedPlugin *imported_plugins; // Plugin imports
 
     // Config/State
-    int immutable_by_default;
     char *current_impl_struct;
 
     // Internal tracking
-    VarMutability *var_mutability_table;
     DeprecatedFunc *deprecated_funcs;
 
     // LSP / Fault Tolerance
@@ -376,10 +366,6 @@ void register_module(ParserContext *ctx, const char *alias, const char *path);
 void register_selective_import(ParserContext *ctx, const char *symbol, const char *alias,
                                const char *source_module);
 SelectiveImport *find_selective_import(ParserContext *ctx, const char *name);
-
-// Mutability tracking
-void register_var_mutability(ParserContext *ctx, const char *name, int is_mutable);
-int is_var_mutable(ParserContext *ctx, const char *name);
 
 // External symbol tracking (C interop)
 void register_extern_symbol(ParserContext *ctx, const char *name);

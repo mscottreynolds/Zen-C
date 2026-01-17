@@ -177,7 +177,6 @@ void add_symbol_with_token(ParserContext *ctx, const char *n, const char *t, Typ
     s->name = xstrdup(n);
     s->type_name = t ? xstrdup(t) : NULL;
     s->type_info = type_info;
-    s->is_mutable = 1;
     s->is_used = 0;
     s->decl_token = tok;
     s->is_const_value = 0;
@@ -536,27 +535,6 @@ void register_lambda(ParserContext *ctx, ASTNode *node)
     ref->node = node;
     ref->next = ctx->global_lambdas;
     ctx->global_lambdas = ref;
-}
-
-void register_var_mutability(ParserContext *ctx, const char *name, int is_mutable)
-{
-    VarMutability *v = xmalloc(sizeof(VarMutability));
-    v->name = xstrdup(name);
-    v->is_mutable = is_mutable;
-    v->next = ctx->var_mutability_table;
-    ctx->var_mutability_table = v;
-}
-
-int is_var_mutable(ParserContext *ctx, const char *name)
-{
-    for (VarMutability *v = ctx->var_mutability_table; v; v = v->next)
-    {
-        if (strcmp(v->name, name) == 0)
-        {
-            return v->is_mutable;
-        }
-    }
-    return 1;
 }
 
 void register_extern_symbol(ParserContext *ctx, const char *name)

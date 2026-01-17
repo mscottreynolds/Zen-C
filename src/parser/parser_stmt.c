@@ -860,19 +860,6 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
 {
     lexer_next(l); // eat 'var'
 
-    // Check for 'mut' keyword
-    int is_mutable = 0;
-    if (lexer_peek(l).type == TOK_MUT)
-    {
-        is_mutable = 1;
-        lexer_next(l);
-    }
-    else
-    {
-        // Default mutability depends on directive
-        is_mutable = !ctx->immutable_by_default;
-    }
-
     // Destructuring: var {x, y} = ...
     if (lexer_peek(l).type == TOK_LBRACE || lexer_peek(l).type == TOK_LPAREN)
     {
@@ -887,8 +874,6 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
             // UPDATE: Pass NULL to add_symbol
             names[count++] = nm;
             add_symbol(ctx, nm, "unknown", NULL);
-            // Register mutability for each destructured variable
-            register_var_mutability(ctx, nm, is_mutable);
             Token next = lexer_next(l);
             if (next.type == (is_struct ? TOK_RBRACE : TOK_RPAREN))
             {
@@ -950,7 +935,6 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
             }
             // Register symbol for variable
             add_symbol(ctx, names[count], "unknown", NULL);
-            register_var_mutability(ctx, names[count], is_mutable);
 
             count++;
 
@@ -1036,7 +1020,6 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
         n->destruct.else_block = else_blk;
 
         add_symbol(ctx, val_name, "unknown", NULL);
-        register_var_mutability(ctx, val_name, is_mutable);
 
         return n;
     }
@@ -1179,10 +1162,9 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
 
     // Register in symbol table with actual token
     add_symbol_with_token(ctx, name, type, type_obj, name_tok);
-    register_var_mutability(ctx, name, is_mutable);
 
     // NEW: Capture Const Integer Values
-    if (!is_mutable && init && init->type == NODE_EXPR_LITERAL && init->literal.type_kind == 0)
+    if (init && init->type == NODE_EXPR_LITERAL && init->literal.type_kind == 0)
     {
         Symbol *s = find_symbol_entry(ctx, name); // Helper to find the struct
         if (s)
@@ -1201,7 +1183,6 @@ ASTNode *parse_var_decl(ParserContext *ctx, Lexer *l)
     n->token = name_tok; // Save location
     n->var_decl.name = name;
     n->var_decl.type_str = type;
-    n->var_decl.is_mutable = is_mutable;
     n->type_info = type_obj;
 
     // Auto-construct Trait Object

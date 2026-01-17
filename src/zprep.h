@@ -75,7 +75,6 @@ typedef enum
     TOK_UNION,
     TOK_ASM,
     TOK_VOLATILE,
-    TOK_MUT,
     TOK_ASYNC,
     TOK_AWAIT,
     TOK_PREPROC,

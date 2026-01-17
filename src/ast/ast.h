@@ -195,7 +195,6 @@ struct ASTNode
             ASTNode *init_expr;
             Type *type_info;
             int is_autofree;
-            int is_mutable;
             int is_static;
         } var_decl;
 

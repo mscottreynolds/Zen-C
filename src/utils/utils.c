@@ -728,10 +728,6 @@ void scan_build_directives(ParserContext *ctx, const char *src)
                     strcat(g_link_flags, flags);
                 }
             }
-            else if (strncmp(line, "immutable-by-default", 20) == 0)
-            {
-                ctx->immutable_by_default = 1;
-            }
 
             p += len;
         }

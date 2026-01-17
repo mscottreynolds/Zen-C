@@ -3486,16 +3486,6 @@ ASTNode *parse_expr_prec(ParserContext *ctx, Lexer *l, Precedence min_prec)
                 {
                     zpanic_at(op, "Cannot assign to const variable '%s'", lhs->var_ref.name);
                 }
-
-                // Check if the variable is immutable
-                if (!is_var_mutable(ctx, lhs->var_ref.name))
-                {
-                    zpanic_at(op,
-                              "Cannot assign to immutable variable '%s' (use 'var mut' "
-                              "to make it "
-                              "mutable)",
-                              lhs->var_ref.name);
-                }
             }
         }
 
