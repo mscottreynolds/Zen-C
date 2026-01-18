@@ -340,6 +340,8 @@ impl Point {
 #### Traits
 Define shared behavior.
 ```zc
+struct Circle { radius: f32; }
+
 trait Drawable {
     fn draw(self);
 }
@@ -347,6 +349,9 @@ trait Drawable {
 impl Drawable for Circle {
     fn draw(self) { ... }
 }
+
+var circle = Circle{};
+var drawable: Drawable = &circle;
 ```
 
 #### Composition
