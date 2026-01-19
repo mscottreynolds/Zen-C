@@ -1586,61 +1586,206 @@ ASTNode *parse_for(ParserContext *ctx, Lexer *l)
         if (in_tok.type == TOK_IDENT && strncmp(in_tok.start, "in", 2) == 0)
         {
             ASTNode *start_expr = parse_expression(ctx, l);
-            int is_inclusive = 0;
-            if (lexer_peek(l).type == TOK_DOTDOT || lexer_peek(l).type == TOK_DOTDOT_LT)
+            // Check for Range Loop (.. or ..= or ..<)
+            TokenType next_tok = lexer_peek(l).type;
+            if (next_tok == TOK_DOTDOT || next_tok == TOK_DOTDOT_LT || next_tok == TOK_DOTDOT_EQ)
             {
-                lexer_next(l); // consume .. or ..<
-            }
-
-            else if (lexer_peek(l).type == TOK_DOTDOT_EQ)
-            {
-                is_inclusive = 1;
-                lexer_next(l); // consume ..=
-            }
-
-            if (1) // Block to keep scope for variables
-            {
-                ASTNode *end_expr = parse_expression(ctx, l);
-
-                ASTNode *n = ast_create(NODE_FOR_RANGE);
-                n->for_range.var_name = xmalloc(var.len + 1);
-                strncpy(n->for_range.var_name, var.start, var.len);
-                n->for_range.var_name[var.len] = 0;
-                n->for_range.start = start_expr;
-                n->for_range.end = end_expr;
-                n->for_range.is_inclusive = is_inclusive;
-
-                if (lexer_peek(l).type == TOK_IDENT && strncmp(lexer_peek(l).start, "step", 4) == 0)
+                int is_inclusive = 0;
+                if (next_tok == TOK_DOTDOT || next_tok == TOK_DOTDOT_LT)
                 {
-                    lexer_next(l);
-                    Token s_tok = lexer_next(l);
-                    char *sval = xmalloc(s_tok.len + 1);
-                    strncpy(sval, s_tok.start, s_tok.len);
-                    sval[s_tok.len] = 0;
-                    n->for_range.step = sval;
+                    lexer_next(l); // consume .. or ..<
                 }
-                else
+                else if (next_tok == TOK_DOTDOT_EQ)
                 {
-                    n->for_range.step = NULL;
+                    is_inclusive = 1;
+                    lexer_next(l); // consume ..=
                 }
 
-                // Fix: Enter scope to register loop variable
+                if (1) // Block to keep scope for variables
+                {
+                    ASTNode *end_expr = parse_expression(ctx, l);
+
+                    ASTNode *n = ast_create(NODE_FOR_RANGE);
+                    n->for_range.var_name = xmalloc(var.len + 1);
+                    strncpy(n->for_range.var_name, var.start, var.len);
+                    n->for_range.var_name[var.len] = 0;
+                    n->for_range.start = start_expr;
+                    n->for_range.end = end_expr;
+                    n->for_range.is_inclusive = is_inclusive;
+
+                    if (lexer_peek(l).type == TOK_IDENT &&
+                        strncmp(lexer_peek(l).start, "step", 4) == 0)
+                    {
+                        lexer_next(l);
+                        Token s_tok = lexer_next(l);
+                        char *sval = xmalloc(s_tok.len + 1);
+                        strncpy(sval, s_tok.start, s_tok.len);
+                        sval[s_tok.len] = 0;
+                        n->for_range.step = sval;
+                    }
+                    else
+                    {
+                        n->for_range.step = NULL;
+                    }
+
+                    enter_scope(ctx);
+                    add_symbol(ctx, n->for_range.var_name, "int", type_new(TYPE_INT));
+
+                    if (lexer_peek(l).type == TOK_LBRACE)
+                    {
+                        n->for_range.body = parse_block(ctx, l);
+                    }
+                    else
+                    {
+                        n->for_range.body = parse_statement(ctx, l);
+                    }
+                    exit_scope(ctx);
+
+                    return n;
+                }
+            }
+            else
+            {
+                // Iterator Loop: for x in obj
+                // Desugar to:
+                /*
+                   {
+                       var __it = obj.iterator();
+                       while (true) {
+                           var __opt = __it.next();
+                           if (__opt.is_none()) break;
+                           var x = __opt.unwrap();
+                           <body...>
+                       }
+                   }
+                */
+
+                char *var_name = xmalloc(var.len + 1);
+                strncpy(var_name, var.start, var.len);
+                var_name[var.len] = 0;
+
+                ASTNode *obj_expr = start_expr;
+
+                // var __it = obj.iterator();
+                ASTNode *it_decl = ast_create(NODE_VAR_DECL);
+                it_decl->var_decl.name = xstrdup("__it");
+                it_decl->var_decl.type_str = NULL; // inferred
+
+                // obj.iterator()
+                ASTNode *call_iter = ast_create(NODE_EXPR_CALL);
+                ASTNode *memb_iter = ast_create(NODE_EXPR_MEMBER);
+                memb_iter->member.target = obj_expr;
+                memb_iter->member.field = xstrdup("iterator");
+                call_iter->call.callee = memb_iter;
+                call_iter->call.args = NULL;
+                call_iter->call.arg_count = 0;
+
+                it_decl->var_decl.init_expr = call_iter;
+
+                // while(true)
+                ASTNode *while_loop = ast_create(NODE_WHILE);
+                ASTNode *true_lit = ast_create(NODE_EXPR_LITERAL);
+                true_lit->literal.type_kind = TOK_INT; // Treated as bool in conditions
+                true_lit->literal.int_val = 1;
+                true_lit->literal.string_val = xstrdup("1");
+                while_loop->while_stmt.condition = true_lit;
+
+                ASTNode *loop_body = ast_create(NODE_BLOCK);
+                ASTNode *stmts_head = NULL;
+                ASTNode *stmts_tail = NULL;
+
+#define APPEND_STMT(node)                                                                          \
+    if (!stmts_head)                                                                               \
+    {                                                                                              \
+        stmts_head = node;                                                                         \
+        stmts_tail = node;                                                                         \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+        stmts_tail->next = node;                                                                   \
+        stmts_tail = node;                                                                         \
+    }
+
+                // var __opt = __it.next();
+                ASTNode *opt_decl = ast_create(NODE_VAR_DECL);
+                opt_decl->var_decl.name = xstrdup("__opt");
+                opt_decl->var_decl.type_str = NULL;
+
+                // __it.next()
+                ASTNode *call_next = ast_create(NODE_EXPR_CALL);
+                ASTNode *memb_next = ast_create(NODE_EXPR_MEMBER);
+                ASTNode *it_ref = ast_create(NODE_EXPR_VAR);
+                it_ref->var_ref.name = xstrdup("__it");
+                memb_next->member.target = it_ref;
+                memb_next->member.field = xstrdup("next");
+                call_next->call.callee = memb_next;
+
+                opt_decl->var_decl.init_expr = call_next;
+                APPEND_STMT(opt_decl);
+
+                // __opt.is_none()
+                ASTNode *call_is_none = ast_create(NODE_EXPR_CALL);
+                ASTNode *memb_is_none = ast_create(NODE_EXPR_MEMBER);
+                ASTNode *opt_ref1 = ast_create(NODE_EXPR_VAR);
+                opt_ref1->var_ref.name = xstrdup("__opt");
+                memb_is_none->member.target = opt_ref1;
+                memb_is_none->member.field = xstrdup("is_none");
+                call_is_none->call.callee = memb_is_none;
+
+                ASTNode *break_stmt = ast_create(NODE_BREAK);
+
+                ASTNode *if_break = ast_create(NODE_IF);
+                if_break->if_stmt.condition = call_is_none;
+                if_break->if_stmt.then_body = break_stmt;
+                APPEND_STMT(if_break);
+
+                // var <user_var> = __opt.unwrap();
+                ASTNode *user_var_decl = ast_create(NODE_VAR_DECL);
+                user_var_decl->var_decl.name = var_name;
+                user_var_decl->var_decl.type_str = NULL;
+
+                // __opt.unwrap()
+                ASTNode *call_unwrap = ast_create(NODE_EXPR_CALL);
+                ASTNode *memb_unwrap = ast_create(NODE_EXPR_MEMBER);
+                ASTNode *opt_ref2 = ast_create(NODE_EXPR_VAR);
+                opt_ref2->var_ref.name = xstrdup("__opt");
+                memb_unwrap->member.target = opt_ref2;
+                memb_unwrap->member.field = xstrdup("unwrap");
+                call_unwrap->call.callee = memb_unwrap;
+
+                user_var_decl->var_decl.init_expr = call_unwrap;
+                APPEND_STMT(user_var_decl);
+
+                // User Body
                 enter_scope(ctx);
-                // Register loop variable so body can see it
-                add_symbol(ctx, n->for_range.var_name, "int", type_new(TYPE_INT));
+                add_symbol(ctx, var_name, NULL, NULL);
 
-                // Handle body (brace or single stmt)
+                ASTNode *user_body_node;
                 if (lexer_peek(l).type == TOK_LBRACE)
                 {
-                    n->for_range.body = parse_block(ctx, l);
+                    user_body_node = parse_block(ctx, l);
                 }
                 else
                 {
-                    n->for_range.body = parse_statement(ctx, l);
+                    ASTNode *stmt = parse_statement(ctx, l);
+                    ASTNode *blk = ast_create(NODE_BLOCK);
+                    blk->block.statements = stmt;
+                    user_body_node = blk;
                 }
                 exit_scope(ctx);
 
-                return n;
+                // Append user body statements to our loop body
+                APPEND_STMT(user_body_node);
+
+                loop_body->block.statements = stmts_head;
+                while_loop->while_stmt.body = loop_body;
+
+                // Wrap entire thing in a block to scope _it
+                ASTNode *outer_block = ast_create(NODE_BLOCK);
+                it_decl->next = while_loop;
+                outer_block->block.statements = it_decl;
+
+                return outer_block;
             }
         }
         l->pos = saved_pos; // Restore
@@ -2936,11 +3081,11 @@ ASTNode *parse_block(ParserContext *ctx, Lexer *l)
                 }
 
                 // RAII: Don't warn if type implements Drop (it is used implicitly)
-                int has_drop = (sym->type_info && sym->type_info->has_drop);
+                int has_drop = (sym->type_info && sym->type_info->traits.has_drop);
                 if (!has_drop && sym->type_info && sym->type_info->name)
                 {
                     ASTNode *def = find_struct_def(ctx, sym->type_info->name);
-                    if (def && def->type_info && def->type_info->has_drop)
+                    if (def && def->type_info && def->type_info->traits.has_drop)
                     {
                         has_drop = 1;
                     }
@@ -2974,6 +3119,51 @@ ASTNode *parse_trait(ParserContext *ctx, Lexer *l)
     strncpy(name, n.start, n.len);
     name[n.len] = 0;
 
+    // Generics <T>
+    char **generic_params = NULL;
+    int generic_count = 0;
+    if (lexer_peek(l).type == TOK_LANGLE)
+    {
+        lexer_next(l);                                // eat <
+        generic_params = xmalloc(sizeof(char *) * 8); // simplified
+        while (1)
+        {
+            Token p = lexer_next(l);
+            if (p.type != TOK_IDENT)
+            {
+                zpanic_at(p, "Expected generic parameter name");
+            }
+            generic_params[generic_count] = xmalloc(p.len + 1);
+            strncpy(generic_params[generic_count], p.start, p.len);
+            generic_params[generic_count][p.len] = 0;
+            generic_count++;
+
+            Token sep = lexer_peek(l);
+            if (sep.type == TOK_COMMA)
+            {
+                lexer_next(l);
+                continue;
+            }
+            else if (sep.type == TOK_RANGLE)
+            {
+                lexer_next(l);
+                break;
+            }
+            else
+            {
+                zpanic_at(sep, "Expected , or > in generic params");
+            }
+        }
+    }
+
+    if (generic_count > 0)
+    {
+        for (int i = 0; i < generic_count; i++)
+        {
+            register_generic(ctx, generic_params[i]);
+        }
+    }
+
     lexer_next(l); // eat {
 
     ASTNode *methods = NULL, *tail = NULL;
@@ -2987,11 +3177,6 @@ ASTNode *parse_trait(ParserContext *ctx, Lexer *l)
         }
 
         // Parse method signature: fn name(args...) -> ret;
-        // Re-use parse_function but stop at semicolon?
-        // Actually trait methods might have default impls later, but for now just
-        // signatures. Let's parse full function but body might be empty/null? Or
-        // simpler: just parse signature manually.
-
         Token ft = lexer_next(l);
         if (ft.type != TOK_IDENT || strncmp(ft.start, "fn", 2) != 0)
         {
@@ -3049,6 +3234,8 @@ ASTNode *parse_trait(ParserContext *ctx, Lexer *l)
     ASTNode *n_node = ast_create(NODE_TRAIT);
     n_node->trait.name = name;
     n_node->trait.methods = methods;
+    n_node->trait.generic_params = generic_params;
+    n_node->trait.generic_param_count = generic_count;
     register_trait(name);
     return n_node;
 }
@@ -3097,7 +3284,7 @@ ASTNode *parse_impl(ParserContext *ctx, Lexer *l)
             Symbol *s = find_symbol_entry(ctx, name2);
             if (s && s->type_info)
             {
-                s->type_info->has_drop = 1;
+                s->type_info->traits.has_drop = 1;
             }
             else
             {
@@ -3105,7 +3292,26 @@ ASTNode *parse_impl(ParserContext *ctx, Lexer *l)
                 ASTNode *def = find_struct_def(ctx, name2);
                 if (def && def->type_info)
                 {
-                    def->type_info->has_drop = 1;
+                    def->type_info->traits.has_drop = 1;
+                }
+            }
+        }
+
+        // Iterator: Check for "Iterable" trait implementation
+        else if (strcmp(name1, "Iterable") == 0)
+        {
+            Symbol *s = find_symbol_entry(ctx, name2);
+            if (s && s->type_info)
+            {
+                s->type_info->traits.has_iterable = 1;
+            }
+            else
+            {
+                // Try finding struct definition
+                ASTNode *def = find_struct_def(ctx, name2);
+                if (def && def->type_info)
+                {
+                    def->type_info->traits.has_iterable = 1;
                 }
             }
         }

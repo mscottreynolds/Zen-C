@@ -1857,30 +1857,38 @@ void instantiate_methods(ParserContext *ctx, GenericImplTemplate *it,
         }
 
         // Handle generic return types in methods (e.g., Option<T> -> Option_int)
-        if (meth->func.ret_type && strchr(meth->func.ret_type, '_'))
+        if (meth->func.ret_type &&
+            (strchr(meth->func.ret_type, '_') || strchr(meth->func.ret_type, '<')))
         {
-            char *ret_copy = xstrdup(meth->func.ret_type);
-            char *underscore = strrchr(ret_copy, '_');
-            if (underscore && underscore > ret_copy)
-            {
-                *underscore = '\0';
-                char *template_name = ret_copy;
+            GenericTemplate *gt = ctx->templates;
 
-                // Check if this looks like a generic (e.g., "Option_V" or "Result_V")
-                GenericTemplate *gt = ctx->templates;
-                while (gt)
+            while (gt)
+            {
+                size_t tlen = strlen(gt->name);
+                char delim = meth->func.ret_type[tlen];
+                if (strncmp(meth->func.ret_type, gt->name, tlen) == 0 &&
+                    (delim == '_' || delim == '<'))
                 {
-                    if (strcmp(gt->name, template_name) == 0)
+                    // Found matching template prefix
+                    const char *arg = meth->func.ret_type + tlen + 1;
+
+                    // Simple approach: instantiate 'Template' with 'Arg'.
+                    // If delimited by <, we need to extract the inside.
+                    char *clean_arg = xstrdup(arg);
+                    if (delim == '<')
                     {
-                        // Found matching template, instantiate it
-                        const char *subst_arg = unmangled_arg ? unmangled_arg : arg;
-                        instantiate_generic(ctx, template_name, arg, subst_arg, meth->token);
-                        break;
+                        char *closer = strrchr(clean_arg, '>');
+                        if (closer)
+                        {
+                            *closer = 0;
+                        }
                     }
-                    gt = gt->next;
+
+                    instantiate_generic(ctx, gt->name, clean_arg, clean_arg, meth->token);
+                    free(clean_arg);
                 }
+                gt = gt->next;
             }
-            free(ret_copy);
         }
 
         meth = meth->next;

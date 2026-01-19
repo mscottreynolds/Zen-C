@@ -1,14 +1,12 @@
 
 import "std/mem.zc"
 
-// --- Globals ---
+// ** Globals **
 var DROP_COUNT = 0;
 
-// --- Structs & Helpers ---
+// ** Structs & Helpers **
 
-trait Drop {
-    fn drop(self);
-}
+// trait Drop defined in std/mem.zc
 
 struct Resource {
     id: int;

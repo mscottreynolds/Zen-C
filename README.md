@@ -249,8 +249,8 @@ for i in 0..<10 { ... }     // Exclusive (Explicit)
 for i in 0..=10 { ... }     // Inclusive (0 to 10)
 for i in 0..10 step 2 { ... }
 
-// Iterator/Collection
-for item in vec { ... }
+// Iterator (Vec, Array, or custom Iterable)
+for item in collection { ... }
 
 // While
 while x < 10 { ... }
@@ -420,6 +420,65 @@ impl Drawable for Circle {
 
 var circle = Circle{};
 var drawable: Drawable = &circle;
+```
+
+#### Standard Traits
+Zen C includes standard traits that integrate with language syntax.
+
+**Iterable**
+
+Implement `Iterable<T>` to enable `for-in` loops for your custom types.
+
+```zc
+import "std/iter.zc"
+
+// Define an Iterator
+struct MyIter {
+    curr: int;
+    stop: int;
+}
+
+impl MyIter {
+    fn next(self) -> Option<int> {
+        if self.curr < self.stop {
+            self.curr += 1;
+            return Option<int>::Some(self.curr - 1);
+        }
+        return Option<int>::None();
+    }
+}
+
+// Implement Iterable
+impl MyRange {
+    fn iterator(self) -> MyIter {
+        return MyIter{curr: self.start, stop: self.end};
+    }
+}
+
+// Use in Loop
+for i in my_range {
+    println "{i}";
+}
+```
+
+**Drop**
+
+Implement `Drop` to define a destructor that runs when the object goes out of scope (RAII).
+
+```zc
+import "std/mem.zc"
+
+struct Resource {
+    ptr: void*;
+}
+
+impl Drop for Resource {
+    fn drop(self) {
+        if self.ptr != NULL {
+            free(self.ptr);
+        }
+    }
+}
 ```
 
 #### Composition

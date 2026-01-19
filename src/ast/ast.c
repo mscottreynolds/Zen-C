@@ -52,6 +52,7 @@ void ast_free(ASTNode *node)
 Type *type_new(TypeKind kind)
 {
     Type *t = xmalloc(sizeof(Type));
+    memset(t, 0, sizeof(Type));
     t->kind = kind;
     t->name = NULL;
     t->inner = NULL;

@@ -225,6 +225,16 @@ void emit_type_aliases(ASTNode *node, FILE *out)
     }
 }
 
+void emit_global_aliases(ParserContext *ctx, FILE *out)
+{
+    TypeAlias *ta = ctx->type_aliases;
+    while (ta)
+    {
+        fprintf(out, "typedef %s %s;\n", ta->original_type, ta->alias);
+        ta = ta->next;
+    }
+}
+
 // Emit enum constructor prototypes
 void emit_enum_protos(ASTNode *node, FILE *out)
 {
@@ -421,6 +431,11 @@ void emit_trait_defs(ASTNode *node, FILE *out)
     {
         if (node->type == NODE_TRAIT)
         {
+            if (node->trait.generic_param_count > 0)
+            {
+                node = node->next;
+                continue;
+            }
             fprintf(out, "typedef struct %s_VTable {\n", node->trait.name);
             ASTNode *m = node->trait.methods;
             while (m)
@@ -751,6 +766,29 @@ void emit_impl_vtables(ParserContext *ctx, FILE *out)
         if (node && node->type == NODE_IMPL_TRAIT)
         {
             char *trait = node->impl_trait.trait_name;
+
+            // Filter generic traits (VTables for them are not emitted)
+            int is_generic_trait = 0;
+            StructRef *search = ctx->parsed_globals_list;
+            while (search)
+            {
+                if (search->node && search->node->type == NODE_TRAIT &&
+                    strcmp(search->node->trait.name, trait) == 0)
+                {
+                    if (search->node->trait.generic_param_count > 0)
+                    {
+                        is_generic_trait = 1;
+                    }
+                    break;
+                }
+                search = search->next;
+            }
+            if (is_generic_trait)
+            {
+                ref = ref->next;
+                continue;
+            }
+
             char *strct = node->impl_trait.target_type;
 
             // Filter templates

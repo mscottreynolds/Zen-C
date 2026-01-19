@@ -11,6 +11,10 @@ fn alloc_n<T>(n: usize) -> T* {
     return (T*)malloc(sizeof(T) * n);
 }
 
+trait Drop {
+    fn drop(self);
+}
+
 struct Box<T> {
     ptr: T*;
 }

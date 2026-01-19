@@ -334,6 +334,8 @@ void codegen_node(ParserContext *ctx, ASTNode *node, FILE *out)
 
         print_type_defs(ctx, out, sorted);
         emit_enum_protos(sorted, out);
+        emit_global_aliases(ctx, out); // Emit ALL aliases (including imports)
+        emit_type_aliases(kids, out);  // Emit local aliases (redundant but safe)
         emit_trait_defs(kids, out);
 
         // First pass: emit ONLY preprocessor directives before struct defs
@@ -382,8 +384,7 @@ void codegen_node(ParserContext *ctx, ASTNode *node, FILE *out)
             raw_iter = raw_iter->next;
         }
 
-        // Emit type aliases after struct defs (so aliased generic types exist)
-        emit_type_aliases(kids, out);
+        // Emit type aliases was here (moved up)
 
         ASTNode *merged_globals = NULL; // Head
 

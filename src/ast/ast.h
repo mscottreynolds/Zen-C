@@ -54,13 +54,17 @@ typedef struct Type
     struct Type **args; // For GENERIC args.
     int arg_count;
     int is_const;
-    int is_explicit_struct; // e.g. "struct Foo" vs "Foo"
+    int is_explicit_struct; // for example, "struct Foo" vs "Foo"
     union
     {
         int array_size;  // For fixed-size arrays [T; N].
         int is_varargs;  // For function types (...).
         int is_restrict; // For restrict pointers.
-        int has_drop;    // For RAII: does this type implement Drop?
+        struct
+        {
+            int has_drop;     // For RAII: does this type implement Drop?
+            int has_iterable; // For the for iterator: does the type implement Iterable?
+        } traits;
     };
 } Type;
 
@@ -404,6 +408,8 @@ struct ASTNode
         {
             char *name;
             ASTNode *methods;
+            char **generic_params;
+            int generic_param_count;
         } trait;
 
         struct

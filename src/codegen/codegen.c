@@ -1699,7 +1699,7 @@ void codegen_node_single(ParserContext *ctx, ASTNode *node, FILE *out)
             {
                 // Cleanup attribute
                 ASTNode *def = find_struct_def(ctx, tname);
-                if (def && def->type_info && def->type_info->has_drop)
+                if (def && def->type_info && def->type_info->traits.has_drop)
                 {
                     fprintf(out, "__attribute__((cleanup(%s__Drop_glue))) ", tname);
                 }
