@@ -65,6 +65,7 @@ Join the discussion, share demos, ask questions, or report bugs in the official 
     - [8. Memory Management](#8-memory-management)
         - [Defer](#defer)
         - [Autofree](#autofree)
+        - [Resource Semantics (Move by Default)](#resource-semantics-move-by-default)
         - [RAII / Drop Trait](#raii--drop-trait)
     - [9. Object Oriented Programming](#9-object-oriented-programming)
         - [Methods](#methods)
