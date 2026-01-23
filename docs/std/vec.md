@@ -75,6 +75,7 @@ struct Vec<T> {
 | **is_empty** | `is_empty(self) -> bool` | Returns `true` if the vector contains no elements. |
 | **contains** | `contains(self, item: T) -> bool` | Returns `true` if vector contains an element equal to `item` (byte-wise). |
 | **clone** | `clone(self) -> Vec<T>` | Returns a new vector with a deep copy of the data. |
+| **eq** | `eq(self, other: Vec<T>) -> bool` | Returns `true` if two vectors are equal byte-wise. |
 
 ### Iteration
 

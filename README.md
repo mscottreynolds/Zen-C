@@ -85,6 +85,7 @@ Join the discussion, share demos, ask questions, or report bugs in the official 
         - [Volatile](#volatile)
         - [Named Constraints](#named-constraints)
     - [15. Build Directives](#15-build-directives)
+- [Standard Library](#standard-library)
 - [Tooling](#tooling)
     - [Language Server (LSP)](#language-server-lsp)
     - [REPL](#repl)
@@ -818,6 +819,27 @@ import "raylib.h"
 
 fn main() { ... }
 ```
+
+---
+
+## Standard Library
+
+Zen C includes a standard library (`std`) covering essential functionality.
+
+[Browse the Standard Library Documentation](docs/std/README.md)
+
+### Key Modules
+
+| Module | Description | Docs |
+| :--- | :--- | :--- |
+| **`std/vec.zc`** | Growable dynamic array `Vec<T>`. | [Docs](docs/std/vec.md) |
+| **`std/string.zc`** | Heap-allocated `String` type with UTF-8 support. | [Docs](docs/std/string.md) |
+| **`std/map.zc`** | Generic Hash Map `Map<V>`. | [Docs](docs/std/map.md) |
+| **`std/fs.zc`** | File system operations. | [Docs](docs/std/fs.md) |
+| **`std/option.zc`** | Optional values (`Some`/`None`). | [Docs](docs/std/option.md) |
+| **`std/result.zc`** | Error handling (`Ok`/`Err`). | [Docs](docs/std/result.md) |
+| **`std/path.zc`** | Cross-platform path manipulation. | [Docs](docs/std/path.md) |
+| **`std/env.zc`** | Process environment variables. | [Docs](docs/std/env.md) |
 
 ---
 
